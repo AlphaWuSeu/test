@@ -1,0 +1,116 @@
+function [abs_q,phi,theta,psi,r] = qtrn_phase(a,b,c,d,m)
+  
+% Calculate the magnitude and 3 phase angles (in radians) 
+% of a quaternion q, where q = a + i*b + j*c + k*d (a,b,c,d can be arrays)
+%
+% m: QWT subband (special case when m = 3, always singular case) 
+%  
+% abs_q: magnitude of quaternion, q 
+% phi  : phase angle associated with direction i (in radians)  
+% theta: phase angle associated with direction j (in radians)  
+% psi  : phase angle associated with direction k (in radians) 
+%   
+% Created by (William) Chan, Wai Lam - 24 September, 2003
+%
+% Equations refer to (P.16-21) Thomas Bülow. Hypercomplex Spectral 
+% SignalRepresentation for the Processing and Analysis of Images
+%
+% http://www.cis.upenn.edu/~thomasbl/publications.html  
+
+[N,M] = size(a);
+  
+abs_q = sqrt(a.^2 + b.^2 + c.^2 + d.^2);
+phi = zeros(N,M);
+theta = zeros(N,M);
+psi = zeros(N,M);
+r = zeros(N,M);
+
+%th = 1e-6;
+ind = (abs_q == 0); 
+abs_q(ind) = 1;  
+
+a_unit = a./abs_q;
+b_unit = b./abs_q;
+c_unit = c./abs_q;
+d_unit = d./abs_q;
+
+R_11 = a_unit.^2 + b_unit.^2 - c_unit.^2 - d_unit.^2;
+R_13 = 2*(b_unit.*d_unit + a_unit.*c_unit);
+
+R_22 = a_unit.^2 - b_unit.^2 + c_unit.^2 - d_unit.^2;
+R_32 = 2*(c_unit.*d_unit + a_unit.*b_unit);
+
+R_31 = 2*(b_unit.*d_unit - a_unit.*c_unit);
+R_33 = a_unit.^2 - b_unit.^2 - c_unit.^2 + d_unit.^2;
+
+R_23 = 2*(c_unit.*d_unit-a_unit.*b_unit);
+
+r=sqrt(R_11.^2+R_13.^2);
+%sqrt(R_22^2+R_32^2)
+
+psi = real(-asin(2*(b_unit.*c_unit-a_unit.*d_unit))/2);
+%if (imag(psi) ~= 0)
+%  disp(sprintf('imaginary phase, b*c-a*d = %.3f', b*c-a*d));
+%end;
+
+th_psi = 0.045;
+%if ((abs((abs(psi)-pi/4))<th_psi) | (m==3))% ambiguity/singular case
+
+if (m == 3) % ambiguity/singular case
+
+%  disp('SINGULAR case in phase calulation!');
+  %phi = 0;
+  %if (psi < 0) % psi = -pi/4
+  %  R_23 = R_31;
+  %else %psi = +pi/4
+  %  R_23 = -R_31;
+  %end;
+  %theta = atan2(R_23,R_33)/2;
+  
+  %theta = atan2(-R_31,R_33)/2;
+  %phi = 0;
+  
+  % singular case
+  %theta = zeros(N,M);
+  phi = atan2(-R_23,R_33)/2;
+  
+  
+else
+  
+  phi = atan2(R_32,R_22)/2;
+  theta = atan2(R_13,R_11)/2;
+  
+end
+
+phi_1 = phi;
+
+a_cal_1 = real((cos(phi_1).*cos(psi).*cos(theta) + sin(phi_1).*sin(psi).*sin(theta)));
+b_cal_1 = real((-cos(phi_1).*sin(psi).*sin(theta) + sin(phi_1).*cos(psi).*cos(theta)));
+c_cal_1 = real((cos(phi_1).*cos(psi).*sin(theta) - sin(phi_1).*sin(psi).*cos(theta)));
+d_cal_1 = real((cos(phi_1).*sin(psi).*cos(theta) + sin(phi_1).*cos(psi).*sin(theta)));
+
+% Check if e^(i*phi)e^(j*theta)e^(k*psi) = -q
+
+phi_2 = zeros(size(phi));
+phi_2(phi >= 0) = phi(phi >= 0) - pi;
+phi_2(phi < 0) = phi(phi < 0) + pi;
+
+a_cal_2 = real((cos(phi_2).*cos(psi).*cos(theta) + sin(phi_2).*sin(psi).*sin(theta)));
+b_cal_2 = real((-cos(phi_2).*sin(psi).*sin(theta) + sin(phi_2).*cos(psi).*cos(theta)));
+c_cal_2 = real((cos(phi_2).*cos(psi).*sin(theta) - sin(phi_2).*sin(psi).*cos(theta)));
+d_cal_2 = real((cos(phi_2).*sin(psi).*cos(theta) + sin(phi_2).*cos(psi).*sin(theta)));
+  
+error_1 = (a_unit-a_cal_1).^2+(b_unit-b_cal_1).^2+(c_unit-c_cal_1).^2+(d_unit-d_cal_1).^2;
+error_2 = (a_unit-a_cal_2).^2+(b_unit-b_cal_2).^2+(c_unit-c_cal_2).^2+(d_unit-d_cal_2).^2;
+
+phi(error_1 >= error_2) = phi_2(error_1 >= error_2);
+phi(error_2 > error_1) = phi_1(error_2 > error_1);
+
+
+
+
+
+
+
+
+

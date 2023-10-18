@@ -1,0 +1,9 @@
+function w_r = rearrange_qtrndual2D_coeffs(w,J)
+  
+% Purpose: Re-arrange output format of 2-D QWT from qtrndual2D.m
+%          to a typical wavelet transform format
+% 
+%   w{j}{i}{d1}{d2} - wavelet coefficients
+%   J - level of decomposition
+  
+  
